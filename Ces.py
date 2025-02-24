@@ -2,6 +2,7 @@ import argparse
 import os
 import subprocess
 import sys
+import platform
 
 def parse_arguments():
     """解析命令行参数"""
@@ -38,6 +39,7 @@ def configure_cmake(build_dir, build_type):
             'cmake',
             '-B', build_dir,
             '-S', '.',
+            '-G', 'MinGW Makefiles',
             f'-DEXECUTABLE_OUTPUT_PATH={exec_path}',
             f'-DLIBRARY_OUTPUT_PATH={lib_path}',
             f'-DCMAKE_BUILD_TYPE={build_type}',
@@ -80,6 +82,9 @@ def main():
     build_type = 'Debug' if args.build_type == 'd' else 'Release'
     build_dir = os.path.join('out', 'debug' if args.build_type == 'd' else 'release')
     program_name = get_program_name(args.program_name)
+    system = platform.system()
+    if system == "Windows":
+        program_name += ".exe"
     exec_path = os.path.join(build_dir, 'bin', program_name)
 
     print(f"🛠️  当前目录: {os.getcwd()}")
