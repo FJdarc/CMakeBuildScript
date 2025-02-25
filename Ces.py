@@ -25,6 +25,13 @@ def parse_arguments():
         help="Build type: 'd' (Debug, default) or 'r' (Release)"
     )
     parser.add_argument(
+        'LibraryType',
+        nargs='?',
+        default='st',
+        choices=['st', 'sh'],
+        help="Library type: 'st' (Static, default) or 'sh' (Shared)"
+    )
+    parser.add_argument(
         'ProgramName', 
         nargs='?', 
         default='',
@@ -36,7 +43,7 @@ def get_program_name(user_input):
     """获取程序名称（优先使用用户输入）"""
     return user_input if user_input else os.path.basename(os.getcwd())
 
-def configure_cmake(arch, build_dir, build_type, generator):
+def configure_cmake(arch, build_dir, build_type, lib_type, generator):
     """执行CMake配置"""
     exec_path = os.path.abspath(os.path.join(build_dir, 'bin'))
     lib_path = os.path.abspath(os.path.join(build_dir, 'lib'))
@@ -45,14 +52,18 @@ def configure_cmake(arch, build_dir, build_type, generator):
             'cmake',
             '-B', build_dir,
             '-S', '.',
+            '-G', generator,
             f'-DEXECUTABLE_OUTPUT_PATH={exec_path}',
             f'-DLIBRARY_OUTPUT_PATH={lib_path}',
             f'-DCMAKE_BUILD_TYPE={build_type}',
         ]
-    config.append('-G')
-    config.append(generator)
-    config.append(f'-DCMAKE_CXX_FLAGS={arch}')
-    config.append(f'-DCMAKE_C_FLAGS={arch}')
+    if lib_type == 'Static':
+        config.append('-DBUILD_STAIC_LIBS=ON')
+        config.append('-DBUILD_SHARED_LIBS=OFF')
+    else:
+        config.append('-DBUILD_STAIC_LIBS=OFF')
+        config.append('-DBUILD_SHARED_LIBS=ON')
+        
     try:
         subprocess.run(config, check=True)
         print(f"✅ CMake 配置成功 @ {build_dir}")
@@ -93,8 +104,8 @@ def main():
     build_type = 'Debug' if args.BuildType == 'd' else 'Release'
     build_dir = os.path.join('build', str(args.Architecture) + '-debug' if args.BuildType == 'd' else str(args.Architecture) + '-release')
     program_name = get_program_name(args.ProgramName)
+    lib_type = 'Static' if args.LibraryType == 'st' else 'Shared'
     generator = 'Unix Makefiles'
-
     system = platform.system()
     if system == "Windows":
         print('Windows')
@@ -115,7 +126,7 @@ def main():
     print(f"🚀 目标程序: {program_name}\n")
 
     # 执行完整流程
-    success = configure_cmake(arch, build_dir, build_type, generator) \
+    success = configure_cmake(arch, build_dir, build_type, lib_type, generator) \
         and build_project(build_dir) \
         and run_executable(exec_path)
 
