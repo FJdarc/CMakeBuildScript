@@ -93,7 +93,6 @@ def main():
     build_type = 'Debug' if args.BuildType == 'd' else 'Release'
     build_dir = os.path.join('build', str(args.Architecture) + '-debug' if args.BuildType == 'd' else str(args.Architecture) + '-release')
     program_name = get_program_name(args.ProgramName)
-    exec_path = os.path.join(build_dir, 'bin', program_name)
     generator = 'Unix Makefiles'
 
     system = platform.system()
@@ -107,6 +106,7 @@ def main():
         print('MacOS')
     else:
         print('Unknown System')
+    exec_path = os.path.join(build_dir, 'bin', program_name)
 
     print(f"🛠️  工作目录: {os.getcwd()}")
     print(f"🏗️  构建架构: {args.Architecture}")
