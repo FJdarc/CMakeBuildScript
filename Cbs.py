@@ -94,7 +94,7 @@ def parse_arguments() -> argparse.Namespace:
             "st - 静态库 (默认)\n"
             "sh - 动态库/DLL"
         ),
-        "program": "指定输出程序名称 (默认使用当前目录名)"
+        "program": "指定运行程序名称 (默认使用当前目录名)"
     }
     
     # 原有参数定义保持不变
