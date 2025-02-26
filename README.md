@@ -1,7 +1,26 @@
-## CMake项目构建工具
+# 一个用python写的CMake构建脚本
 
-curl -O https://raw.githubusercontent.com/FJdarc/CMakeBuildScript/master/Cbs.py | chmod +x ./Cbs.py
+---
 
+脚本需要gcc和g++，cmake和python。
+
+进入CMakeLists.txt文件夹
+
+1.Windows
+
+打开Windows CMD，执行下面的命令
+
+`curl -O https://raw.githubusercontent.com/FJdarc/CMakeBuildScript/master/Cbs.py && .\Cbs.py -h`
+
+2.Linux
+
+`curl -O https://raw.githubusercontent.com/FJdarc/CMakeBuildScript/master/Cbs.py && chmod +x ./Cbs.py && .\Cbs.py -h`
+
+---
+
+即可得到Cbs脚本的帮助信息如下
+
+```bash
 usage: Cbs.py [-h] [{x64,x86}] [{d,r}] [{st,sh}] [program_name]
 
 CMake项目构建工具
@@ -19,4 +38,5 @@ positional arguments:
   program_name  指定输出程序名称 (默认使用当前目录名)
 
 options:
-  -h, --help    show this help message and exit
+  -h, --help    显示帮助信息并退出
+```
