@@ -177,6 +177,7 @@ def run_command(command: List[str], description: str, error_msg: str) -> Tuple[b
         success = True
     except subprocess.CalledProcessError as e:
         print(f"{LOG_STYLE['ERROR']}❌ {error_msg}: {e}{COLORS['RESET']}")
+        input(f"\n{LOG_STYLE['INFO']}🔚 按任意键退出...{COLORS['RESET']}")
     return success, time.perf_counter() - start_time
 
 def configure_project(build_dir: Path, build_type: str, lib_type: str, flags: str) -> Tuple[bool, float]:
@@ -273,9 +274,8 @@ def main() -> None:
     # 运行程序
     if exec_path := locate_executable(build_dir, program_name):
         execute_binary(exec_path)
-    
+        
     input(f"\n{LOG_STYLE['INFO']}🔚 按任意键退出...{COLORS['RESET']}")
-
     sys.exit(0)
 
 if __name__ == "__main__":
