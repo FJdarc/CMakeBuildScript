@@ -3,134 +3,173 @@ import sys
 import argparse
 import platform
 import subprocess
+from typing import Optional, Tuple
 
-def parse_arguments():
-    """解析命令行参数"""
+# 常量定义
+DEFAULT_BUILD_DIR = "build"
+SUPPORTED_GENERATORS = {
+    "Windows": "MinGW Makefiles",
+    "Linux": "Unix Makefiles",
+    "Darwin": "Unix Makefiles"
+}
+
+def parse_arguments() -> argparse.Namespace:
+    """解析并验证命令行参数"""
     parser = argparse.ArgumentParser(
-        description='CMake cross-platform build script',
+        description='CMake cross-platform build automation tool',
         formatter_class=argparse.RawTextHelpFormatter
     )
+    
     parser.add_argument(
-        'Architecture',
+        'architecture',
         nargs='?',
         default='x64',
         choices=['x64', 'x86'],
-        help="Architecture: 'x64' (default) or 'x86'"
+        help="Target architecture:\n"
+             "x64 - 64-bit architecture (default)\n"
+             "x86 - 32-bit architecture"
     )
+    
     parser.add_argument(
-        'BuildType',
+        'build_type',
         nargs='?',
         default='d',
         choices=['d', 'r'],
-        help="Build type: 'd' (Debug, default) or 'r' (Release)"
+        help="Build configuration:\n"
+             "d - Debug build with symbols (default)\n"
+             "r - Release build optimized for speed"
     )
+    
     parser.add_argument(
-        'LibraryType',
+        'library_type',
         nargs='?',
         default='st',
         choices=['st', 'sh'],
-        help="Library type: 'st' (Static, default) or 'sh' (Shared)"
+        help="Library linkage type:\n"
+             "st - Static library linkage (default)\n"
+             "sh - Shared library/DLL linkage"
     )
+    
     parser.add_argument(
-        'ProgramName', 
+        'program_name', 
         nargs='?', 
         default='',
-        help="Name of the executable to run (default: current directory)"
+        help="Specify output executable name\n"
+             "(default: current directory name)"
     )
+    
     return parser.parse_args()
 
-def get_program_name(user_input):
-    """获取程序名称（优先使用用户输入）"""
-    return user_input if user_input else os.path.basename(os.getcwd())
+def validate_environment() -> None:
+    """检查必要工具的可用性"""
+    try:
+        subprocess.run(['cmake', '--version'], check=True, 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        sys.exit("❌ CMake not found. Please install CMake and add it to PATH")
 
-def configure_cmake(arch, build_dir, build_type, lib_type, generator):
-    """执行CMake配置"""
+def get_build_info(args: argparse.Namespace) -> Tuple[str, str, str, str]:
+    """生成构建元信息"""
+    build_mode = 'Debug' if args.build_type == 'd' else 'Release'
+    linkage_type = 'Static' if args.library_type == 'st' else 'Shared'
+    compiler_flags = '-m64' if args.architecture == 'x64' else '-m32'
+    build_dir = os.path.join(
+        DEFAULT_BUILD_DIR,
+        f"{args.architecture}-{build_mode.lower()}"
+    )
+    return build_mode, linkage_type, compiler_flags, build_dir
+
+def configure_project(build_dir: str, build_type: str, 
+                     lib_type: str, flags: str) -> bool:
+    """执行CMake配置阶段"""
     exec_path = os.path.abspath(os.path.join(build_dir, 'bin'))
     lib_path = os.path.abspath(os.path.join(build_dir, 'lib'))
 
-    config = [
-            'cmake',
-            '-B', build_dir,
-            '-S', '.',
-            '-G', generator,
-            f'-DEXECUTABLE_OUTPUT_PATH={exec_path}',
-            f'-DLIBRARY_OUTPUT_PATH={lib_path}',
-            f'-DCMAKE_BUILD_TYPE={build_type}',
-        ]
-    if lib_type == 'Static':
-        config.append('-DBUILD_STAIC_LIBS=ON')
-        config.append('-DBUILD_SHARED_LIBS=OFF')
-    else:
-        config.append('-DBUILD_STAIC_LIBS=OFF')
-        config.append('-DBUILD_SHARED_LIBS=ON')
-        
+    cmake_cmd = [
+        'cmake',
+        '-B', build_dir,
+        '-S', '.',
+        '-G', SUPPORTED_GENERATORS.get(platform.system(), "Unix Makefiles"),
+        f'-DCMAKE_BUILD_TYPE={build_type}',
+        f'-DCMAKE_C_FLAGS={flags}',
+        f'-DCMAKE_CXX_FLAGS={flags}',
+        f'-DEXECUTABLE_OUTPUT_PATH={exec_path}',
+        f'-DLIBRARY_OUTPUT_PATH={lib_path}',
+        '-DBUILD_SHARED_LIBS=ON' if lib_type == 'Shared' else '-DBUILD_SHARED_LIBS=OFF'
+    ]
+
     try:
-        subprocess.run(config, check=True)
-        print(f"✅ CMake 配置成功 @ {build_dir}")
+        print(f"⚙️  生成构建系统 ({' '.join(cmake_cmd)})")
+        subprocess.run(cmake_cmd, check=True)
+        print(f"✅ CMake配置成功 [{build_dir}]")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ CMake 配置失败: {e}", file=sys.stderr)
+        print(f"❌ CMake配置失败: {e}", file=sys.stderr)
         return False
 
-def build_project(build_dir):
-    """执行项目构建"""
+def compile_project(build_dir: str) -> bool:
+    """执行代码编译"""
     try:
-        subprocess.run(['cmake', '--build', build_dir], check=True)
-        print(f"✅ 项目构建成功 @ {build_dir}")
+        print("🔨 开始项目编译...")
+        subprocess.run(
+            ['cmake', '--build', build_dir, '--parallel'],
+            check=True
+        )
+        print(f"✅ 项目构建成功 [{build_dir}]")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ 项目构建失败: {e}", file=sys.stderr)
+        print(f"❌ 编译失败: {e}", file=sys.stderr)
         return False
 
-def run_executable(exec_path):
-    """运行生成的可执行文件"""
+def locate_executable(build_dir: str, 
+                     program_name: str) -> Optional[str]:
+    """定位生成的可执行文件"""
+    base_name = program_name if program_name else os.path.basename(os.getcwd())
+    executable = f"{base_name}.exe" if platform.system() == "Windows" else base_name
+    exec_path = os.path.join(build_dir, 'bin', executable)
+    
     if not os.path.exists(exec_path):
-        print(f"❌ 可执行文件不存在: {exec_path}", file=sys.stderr)
-        return False
+        print(f"⚠️  未找到可执行文件: {exec_path}")
+        return None
+    return exec_path
 
+def execute_binary(exec_path: str) -> bool:
+    """运行编译后的可执行文件"""
     try:
+        print(f"🚀 启动程序: {os.path.basename(exec_path)}")
         subprocess.run([exec_path], check=True)
-        print(f"✅ 程序执行成功: {exec_path}")
+        print("✅ 程序执行成功")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ 程序执行失败 (exit code {e.returncode})", file=sys.stderr)
+        print(f"❌ 程序异常退出 (代码 {e.returncode})", file=sys.stderr)
         return False
 
 def main():
-    """主工作流程"""
+    """主控制流程"""
     args = parse_arguments()
+    validate_environment()
     
-    arch = "-m64" if args.Architecture == 'x64' else "-m32"
-    build_type = 'Debug' if args.BuildType == 'd' else 'Release'
-    build_dir = os.path.join('build', str(args.Architecture) + '-debug' if args.BuildType == 'd' else str(args.Architecture) + '-release')
-    program_name = get_program_name(args.ProgramName)
-    lib_type = 'Static' if args.LibraryType == 'st' else 'Shared'
-    generator = 'Unix Makefiles'
-    system = platform.system()
-    if system == "Windows":
-        print('Windows')
-        program_name +=".exe"
-        generator = 'MinGW Makefiles'
-    elif system == "Linux":
-        print('Linux')
-    elif system == "Darwin":
-        print('MacOS')
-    else:
-        print('Unknown System')
-    exec_path = os.path.join(build_dir, 'bin', program_name)
-
-    print(f"🛠️  工作目录: {os.getcwd()}")
-    print(f"🏗️  构建架构: {args.Architecture}")
-    print(f"🔧 构建类型: {build_type}")
+    build_mode, linkage_type, flags, build_dir = get_build_info(args)
+    program_name = args.program_name or os.path.basename(os.getcwd())
+    
+    print("\n" + "="*50)
+    print(f"📂 工作目录: {os.getcwd()}")
+    print(f"🖥️  目标架构: {args.architecture.upper()}")
+    print(f"⚡ 构建类型: {build_mode}")
+    print(f"📚 库类型: {linkage_type}")
     print(f"📁 构建目录: {build_dir}")
-    print(f"🚀 目标程序: {program_name}\n")
+    print(f"🎯 目标程序: {program_name}")
+    print("="*50 + "\n")
 
-    # 执行完整流程
-    success = configure_cmake(arch, build_dir, build_type, lib_type, generator) \
-        and build_project(build_dir) \
-        and run_executable(exec_path)
-
-    sys.exit(0 if success else 1)
+    if not configure_project(build_dir, build_mode, linkage_type, flags):
+        sys.exit(1)
+    if not compile_project(build_dir):
+        sys.exit(1)
+    
+    if exec_path := locate_executable(build_dir, program_name):
+        execute_binary(exec_path)
+    
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

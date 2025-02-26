@@ -1,4 +1,4 @@
-# CMakeEasyScript
+PS C:\dev\CMakeEasyScript> py .\Ces.py -h
 usage: Ces.py [-h] [{x64,x86}] [{d,r}] [{st,sh}] [ProgramName]
 
 CMake cross-platform build script
@@ -11,3 +11,5 @@ positional arguments:
 
 options:
   -h, --help   show this help message and exit
+
+Example: python Ces.py x64 d st Example
