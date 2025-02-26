@@ -50,9 +50,32 @@ def enable_windows_ansi() -> None:
 
 def parse_arguments() -> argparse.Namespace:
     """解析命令行参数"""
+    class CustomHelpAction(argparse.Action):
+        def __init__(self, option_strings, dest=argparse.SUPPRESS, default=argparse.SUPPRESS, help=None):
+            super().__init__(
+                option_strings=option_strings,
+                dest=dest,
+                default=default,
+                nargs=0,
+                help=help
+            )
+        
+        def __call__(self, parser, namespace, values, option_string=None):
+            parser.print_help()
+            input(f"\n{LOG_STYLE['INFO']}🔚 按任意键退出...{COLORS['RESET']}")
+            sys.exit(0)
+
     parser = argparse.ArgumentParser(
         description=f'{LOG_STYLE["HEADER"]}CMake项目构建工具{COLORS["RESET"]}',
-        formatter_class=argparse.RawTextHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False  # 禁用默认的help处理
+    )
+    
+    # 添加自定义help选项
+    parser.add_argument(
+        '-h', '--help',
+        action=CustomHelpAction,
+        help='显示帮助信息并退出'
     )
     
     help_text = {
@@ -74,6 +97,7 @@ def parse_arguments() -> argparse.Namespace:
         "program": "指定输出程序名称 (默认使用当前目录名)"
     }
     
+    # 原有参数定义保持不变
     parser.add_argument(
         'architecture',
         nargs='?',
@@ -250,6 +274,8 @@ def main() -> None:
     if exec_path := locate_executable(build_dir, program_name):
         execute_binary(exec_path)
     
+    input(f"\n{LOG_STYLE['INFO']}🔚 按任意键退出...{COLORS['RESET']}")
+
     sys.exit(0)
 
 if __name__ == "__main__":
