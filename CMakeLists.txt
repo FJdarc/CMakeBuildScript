@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Set the project name
-project(Example)
+project(CMakeEasyScript)
 
 # Add an executable
-add_executable(Example main.cpp)
+add_executable(CMakeEasyScript main.cpp)
