@@ -1,1 +1,5 @@
 build/
+Cbs.build/
+Cbs.dist/
+Cbs.onefile-build/
+Cbs.exe
