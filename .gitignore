@@ -2,5 +2,4 @@ build/
 Cbs.build/
 Cbs.dist/
 Cbs.onefile-build/
-Cbs.exe
-x86_64*
+release/
