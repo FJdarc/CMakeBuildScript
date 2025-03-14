@@ -97,9 +97,8 @@ def parse_arguments() -> argparse.Namespace:
         "program": "指定运行程序名称 (默认使用当前目录名)"
     }
     
-    # 原有参数定义保持不变
     parser.add_argument(
-        'architecture',
+        '-a', '--architecture',
         nargs='?',
         default='x64',
         choices=['x64', 'x86'],
@@ -107,7 +106,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     
     parser.add_argument(
-        'build_type',
+        '-b', '--build-type',
         nargs='?',
         default='d',
         choices=['d', 'r'],
@@ -115,7 +114,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     
     parser.add_argument(
-        'library_type',
+        '-l', '--library-type',
         nargs='?',
         default='st',
         choices=['st', 'sh'],
@@ -123,7 +122,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     
     parser.add_argument(
-        'program_name', 
+        '-p', '--program-name', 
         nargs='?', 
         default='',
         help=f"{LOG_STYLE['INFO']}{help_text['program']}{COLORS['RESET']}"
@@ -159,13 +158,13 @@ def validate_environment() -> None:
     for compiler in [('GCC', ['gcc', '--version']), ('G++', ['g++', '--version'])]:
         check_compiler(*compiler)
 
-def get_build_params(args: argparse.Namespace) -> Tuple[str, str, str, Path]:
+def get_build_params(args: argparse.Namespace) -> Tuple[str, str, str, Path, str]:
     """获取构建配置参数"""
     build_mode = 'Debug' if args.build_type == 'd' else 'Release'
     linkage_type = 'Static' if args.library_type == 'st' else 'Shared'
     compiler_flags = '-m64' if args.architecture == 'x64' else '-m32'
     build_dir = Path(DEFAULT_BUILD_DIR) / f"{args.architecture}-{build_mode.lower()}"
-    return build_mode, linkage_type, compiler_flags, build_dir
+    return build_mode, linkage_type, compiler_flags, build_dir, args.architecture
 
 def run_command(command: List[str], description: str, error_msg: str) -> Tuple[bool, float]:
     """通用命令执行函数"""
@@ -180,7 +179,7 @@ def run_command(command: List[str], description: str, error_msg: str) -> Tuple[b
         input(f"\n{LOG_STYLE['INFO']}🔚 按任意键退出...{COLORS['RESET']}")
     return success, time.perf_counter() - start_time
 
-def configure_project(build_dir: Path, build_type: str, lib_type: str, flags: str) -> Tuple[bool, float]:
+def configure_project(build_dir: Path, build_type: str, lib_type: str, flags: str, arch: str) -> Tuple[bool, float]:
     """执行CMake配置"""
     exec_path = build_dir / 'bin'
     lib_path = build_dir / 'lib'
@@ -195,9 +194,17 @@ def configure_project(build_dir: Path, build_type: str, lib_type: str, flags: st
         f'-DCMAKE_CXX_FLAGS={flags}',
         f'-DEXECUTABLE_OUTPUT_PATH={exec_path.resolve()}',
         f'-DLIBRARY_OUTPUT_PATH={lib_path.resolve()}',
-        '-DBUILD_SHARED_LIBS=ON' if lib_type == 'Shared' else '-DBUILD_SHARED_LIBS=OFF'
+        '-DBUILD_SHARED_LIBS=ON' if lib_type == 'Shared' else '-DBUILD_SHARED_LIBS=OFF',
+        '-DCMAKE_CXX_COMPILER=/path/to/g++',
     ]
-    
+    if platform.system() == "Windows":
+        if arch == 'x64':
+            cmake_cmd.append('-DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc.exe')
+            cmake_cmd.append('-DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++.exe')
+        if arch == 'x86':
+            cmake_cmd.append('-DCMAKE_C_COMPILER=i686-w64-mingw32-gcc.exe')
+            cmake_cmd.append('-DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++.exe')
+
     return run_command(
         cmake_cmd,
         f"生成构建系统: {' '.join(cmake_cmd)}",
@@ -240,7 +247,7 @@ def main() -> None:
     args = parse_arguments()
     validate_environment()
     
-    build_mode, linkage_type, flags, build_dir = get_build_params(args)
+    build_mode, linkage_type, flags, build_dir, arch = get_build_params(args)
     program_name = args.program_name or Path.cwd().name
     
     # 打印构建头信息
@@ -257,7 +264,7 @@ def main() -> None:
     print(f"{LOG_STYLE['TITLE']}" + "\n".join(header) + f"{COLORS['RESET']}\n")
 
     # 配置阶段
-    config_success, config_time = configure_project(build_dir, build_mode, linkage_type, flags)
+    config_success, config_time = configure_project(build_dir, build_mode, linkage_type, flags, arch)
     if not config_success:
         print(f"{LOG_STYLE['TIME']}⏱️  CMake配置耗时: {config_time:.2f}秒{COLORS['RESET']}")
         sys.exit(1)
