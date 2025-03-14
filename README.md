@@ -1,25 +1,26 @@
-# 一个用python写的CMake构建脚本
+# ​CMake一键运行程序
 
----
+## Purpose
 
-脚本需要gcc和g++，cmake和python。
+不需要编译器配置文件即可运行CMake项目
 
-进入CMakeLists.txt文件夹
+支持指定编译架构，编译类型，库类型和程序名称
 
-1.Windows
+## Run
 
-打开Windows CMD，执行下面的命令
+默认使用gcc和g++
 
-`curl -O https://raw.githubusercontent.com/FJdarc/CMakeBuildScript/master/Cbs.py && .\Cbs.py -h`
+需要安装CMake
 
-2.Linux
+Windows下推荐安装[MinGW](https://github.com/niXman/mingw-builds-binaries/releases)
 
-`curl -O https://raw.githubusercontent.com/FJdarc/CMakeBuildScript/master/Cbs.py && chmod +x ./Cbs.py && ./Cbs.py -h`
+下载程序[Cbs.py](https://github.com/FJdarc/CMakeBuildScript/blob/master/Cbs.py)
 
----
+移动到CMake项目根CMakeLists.txt目录
 
-即可得到Cbs脚本的帮助信息如下
+执行命令 `x86_64-Cbs.py -h`
 
+得到帮助信息如下
 ```bash
 usage: Cbs.py [-h] [-a [{x64,x86}]] [-b [{d,r}]] [-l [{st,sh}]] [-p [PROGRAM_NAME]]
 
